@@ -1,7 +1,12 @@
 # Teleprompter
 
+**https://paulherzog-cresta.github.io/teleprompter/**
+
 A phone teleprompter for reading role-play scripts during live demos. Scripts sit at a fixed
 reading position so your eyes land in the same place every glance, and you tap to advance.
+
+Sharing it with the team is sending them that link. Everyone builds their own library on their own
+device; there is nothing to sign into and nothing shared between devices.
 
 No server, no accounts, no third-party integrations. Scripts live in the browser's local storage
 on whichever device you put them on, and nowhere else.
