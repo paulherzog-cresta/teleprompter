@@ -8,6 +8,7 @@ type Props = {
   cursor: number;
   onCursor: (cursor: number) => void;
   onLeaveMode: () => void;
+  topSignal: number;
 };
 
 /** How far down the screen the reading line sits. */
@@ -23,6 +24,8 @@ const SYNTHETIC_CLICK_MS = 700;
 /** Long enough that a resize mid-scroll does not yank the page back. */
 const REANCHOR_QUIET_MS = 400;
 const PERSIST_DEBOUNCE_MS = 400;
+/** Roughly how long a smooth scroll runs for. */
+const INTENT_WINDOW_MS = 700;
 
 type TouchState = {
   y: number;
@@ -42,7 +45,14 @@ function touchDistance(touches: React.TouchList): number {
  * The teleprompter: every entry rendered, the reading line pinned at 38%, and
  * the cursor derived from scroll position rather than driving it.
  */
-export function PromptView({ entries, myRole, cursor, onCursor, onLeaveMode }: Props) {
+export function PromptView({
+  entries,
+  myRole,
+  cursor,
+  onCursor,
+  onLeaveMode,
+  topSignal,
+}: Props) {
   const [current, setCurrent] = useState(() =>
     Math.min(Math.max(0, cursor), Math.max(0, entries.length - 1)),
   );
@@ -94,6 +104,13 @@ export function PromptView({ entries, myRole, cursor, onCursor, onLeaveMode }: P
     return index;
   }, []);
 
+  /**
+   * Where the last tap asked to land. A smooth scroll takes a few hundred ms,
+   * and the cursor derived from scroll position lags behind it — so a second
+   * tap has to step from the intended entry, not the one still on screen.
+   */
+  const intent = useRef<{ index: number; at: number } | null>(null);
+
   const scrollToIndex = useCallback((index: number, smooth: boolean) => {
     const surface = surfaceRef.current;
     const offsets = offsetsRef.current;
@@ -103,8 +120,21 @@ export function PromptView({ entries, myRole, cursor, onCursor, onLeaveMode }: P
       top: Math.max(0, offsets[clamped] - anchorRef.current),
       behavior: smooth ? 'smooth' : 'auto',
     });
+    intent.current = { index: clamped, at: Date.now() };
     setCurrent(clamped);
   }, []);
+
+  const step = useCallback(
+    (delta: number) => {
+      const pending = intent.current;
+      const from =
+        pending !== null && Date.now() - pending.at < INTENT_WINDOW_MS
+          ? pending.index
+          : currentRef.current;
+      scrollToIndex(from + delta, true);
+    },
+    [scrollToIndex],
+  );
 
   useLayoutEffect(() => {
     measure();
@@ -133,6 +163,14 @@ export function PromptView({ entries, myRole, cursor, onCursor, onLeaveMode }: P
     const timer = window.setTimeout(() => onCursor(current), PERSIST_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [current, onCursor]);
+
+  // Seeded with the value at mount so switching modes does not read as a request.
+  const lastTopSignal = useRef(topSignal);
+  useEffect(() => {
+    if (topSignal === lastTopSignal.current) return;
+    lastTopSignal.current = topSignal;
+    scrollToIndex(0, true);
+  }, [topSignal, scrollToIndex]);
 
   const handleScroll = () => {
     lastScrollAt.current = Date.now();
@@ -206,12 +244,20 @@ export function PromptView({ entries, myRole, cursor, onCursor, onLeaveMode }: P
     const tooSlow = Date.now() - state.t > TAP_MAX_MS;
     if (fingerMoved || listMoved || tooSlow) return;
 
-    scrollToIndex(currentRef.current + 1, true);
+    stepFromTap(touch.clientY);
   };
 
-  const onClick = () => {
+  /** The reading line splits the screen: above it goes back, below goes on. */
+  const stepFromTap = (clientY: number) => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const lineY = surface.getBoundingClientRect().top + anchorRef.current;
+    step(clientY < lineY ? -1 : 1);
+  };
+
+  const onClick = (e: React.MouseEvent) => {
     if (Date.now() - lastTouchEnd.current < SYNTHETIC_CLICK_MS) return;
-    scrollToIndex(currentRef.current + 1, true);
+    stepFromTap(e.clientY);
   };
 
   // Safari answers pinch with its own gesture events, which are more reliable
@@ -240,13 +286,13 @@ export function PromptView({ entries, myRole, cursor, onCursor, onLeaveMode }: P
         case 'ArrowDown':
         case 'PageDown':
           e.preventDefault();
-          scrollToIndex(currentRef.current + 1, true);
+          step(1);
           break;
         case 'ArrowLeft':
         case 'ArrowUp':
         case 'PageUp':
           e.preventDefault();
-          scrollToIndex(currentRef.current - 1, true);
+          step(-1);
           break;
       }
     };

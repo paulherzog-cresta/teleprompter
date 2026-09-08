@@ -19,6 +19,8 @@ export type Script = {
 export type ReadingMode = 'read' | 'prompt';
 
 export type Settings = {
-  fontScale: number; // 0.7 to 1.6, default 1.0
+  // Separate scales: reading and glancing want different sizes.
+  readScale: number; // 0.7 to 1.6, default 1.0
+  promptScale: number; // 0.7 to 1.6, default 1.0
   mode: ReadingMode;
 };

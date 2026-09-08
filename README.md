@@ -111,7 +111,10 @@ line rather than snapping hard.
 | Gesture | Effect |
 | --- | --- |
 | Scroll | Read freely. In Prompt, whichever entry sits on the line becomes the current one |
-| Tap anywhere *(Prompt)* | Pull the next entry up to the reading line |
+| Tap a spoken line *(Read)* | Runs that line up to the reading position. Directions are inert |
+| Tap below the line *(Prompt)* | Next entry |
+| Tap above the line *(Prompt)* | Previous entry |
+| Tap the title bar | Back to the top of the script, either mode |
 | Pinch in / out | Shortcut between the two modes, if the toggle is out of reach |
 
 On a keyboard: space or arrows to move through Prompt, `m` to switch modes, `esc` to leave the
@@ -121,10 +124,10 @@ Every line is labelled with its role, with your own name in the accent colour. Y
 brightest and largest; other roles are a step down. Directions are not dialogue at all, so they
 render as a boxed amber note rather than something that could be mistaken for a spoken line.
 
-Text size is adjustable in Settings and remembered per device. The scale was rebased once: what
-read as 150% before now reads as 100%, and `loadSettings` divides an older stored value through so
-the size on an existing device does not change. Prompt mode at 100% is therefore large — 70% is
-roughly where its old default sat.
+Each mode has its own text size, set in Settings and remembered per device — reading and glancing
+want different sizes, so one slider could not serve both. Read sits at 22px per 100%, Prompt at
+34px. `loadSettings` migrates older stores forward: a v1 scale is divided through the v2 rebase,
+and a single v2 scale is copied into both of the v3 ones.
 
 The reader holds a screen wake lock while it is open and re-acquires it whenever the app comes back
 to the foreground, so the phone does not sleep mid-sentence.

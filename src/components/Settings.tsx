@@ -27,22 +27,24 @@ export function Settings({ settings, scriptCount, onChange, onClearAll, onBack }
 
       <div className="screen-body">
         <div className="field">
-          <span className="field-label">Text size — {Math.round(settings.fontScale * 100)}%</span>
+          <span className="field-label">
+            Reading view — {Math.round(settings.readScale * 100)}%
+          </span>
           <Slider.Root
             className="slider"
             min={FONT_SCALE_MIN}
             max={FONT_SCALE_MAX}
             step={0.05}
-            value={[settings.fontScale]}
-            onValueChange={([fontScale]) => onChange({ ...settings, fontScale })}
+            value={[settings.readScale]}
+            onValueChange={([readScale]) => onChange({ ...settings, readScale })}
           >
             <Slider.Track className="slider-track">
               <Slider.Range className="slider-range" />
             </Slider.Track>
-            <Slider.Thumb className="slider-thumb" aria-label="Text size" />
+            <Slider.Thumb className="slider-thumb" aria-label="Reading view text size" />
           </Slider.Root>
 
-          <div className="preview preview-live" style={{ marginTop: 'var(--gap)' }}>
+          <div className="preview preview-read" style={{ marginTop: 'var(--gap)' }}>
             <div className="entry entry-mine">
               <div className="entry-body">
                 <span className="entry-role">You</span>
@@ -58,6 +60,34 @@ export function Settings({ settings, scriptCount, onChange, onClearAll, onBack }
             <div className="entry entry-direction">
               <div className="entry-body">
                 <p className="entry-text">Pause here, let it land.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="field">
+          <span className="field-label">
+            Teleprompter — {Math.round(settings.promptScale * 100)}%
+          </span>
+          <Slider.Root
+            className="slider"
+            min={FONT_SCALE_MIN}
+            max={FONT_SCALE_MAX}
+            step={0.05}
+            value={[settings.promptScale]}
+            onValueChange={([promptScale]) => onChange({ ...settings, promptScale })}
+          >
+            <Slider.Track className="slider-track">
+              <Slider.Range className="slider-range" />
+            </Slider.Track>
+            <Slider.Thumb className="slider-thumb" aria-label="Teleprompter text size" />
+          </Slider.Root>
+
+          <div className="preview preview-prompt" style={{ marginTop: 'var(--gap)' }}>
+            <div className="entry entry-mine">
+              <div className="entry-body">
+                <span className="entry-role">You</span>
+                <p className="entry-text">Sized to glance at.</p>
               </div>
             </div>
           </div>

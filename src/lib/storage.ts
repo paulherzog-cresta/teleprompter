@@ -6,14 +6,14 @@ const SETTINGS_KEY = `${NS}.settings`;
 
 export const FONT_SCALE_MIN = 0.7;
 export const FONT_SCALE_MAX = 1.6;
-export const DEFAULT_SETTINGS: Settings = { fontScale: 1, mode: 'read' };
+export const DEFAULT_SETTINGS: Settings = { readScale: 1, promptScale: 1, mode: 'read' };
 
 /**
  * Bumped when the meaning of a stored setting changes rather than its shape.
- * v2 rebased the type sizes so the old 150% is the new 100%; a scale saved
- * under v1 has to be divided through or the text triples in size.
+ * v2 rebased the type sizes so the old 150% read as 100%. v3 split the single
+ * scale in two, one per mode, and shrank both base sizes.
  */
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 const V2_SCALE_REBASE = 1.5;
 
 export const clampFontScale = (n: number) =>
@@ -80,13 +80,23 @@ export function loadSettings(): Settings {
   if (typeof value !== 'object' || value === null) return { ...DEFAULT_SETTINGS };
   const s = value as Record<string, unknown>;
 
-  const raw = typeof s.fontScale === 'number' ? s.fontScale : 1;
   const version = typeof s.v === 'number' ? s.v : 1;
-  // A pre-v2 scale was measured against the smaller type, so carry the user's
-  // chosen size across rather than resetting it.
-  const fontScale = clampFontScale(version < 2 ? raw / V2_SCALE_REBASE : raw);
+  const mode: Settings['mode'] = s.mode === 'prompt' ? 'prompt' : 'read';
 
-  return { fontScale, mode: s.mode === 'prompt' ? 'prompt' : 'read' };
+  if (version >= 3) {
+    return {
+      readScale: clampFontScale(typeof s.readScale === 'number' ? s.readScale : 1),
+      promptScale: clampFontScale(typeof s.promptScale === 'number' ? s.promptScale : 1),
+      mode,
+    };
+  }
+
+  // Older stores held one scale for both modes. A pre-v2 value was measured
+  // against smaller type, so divide it through first; then carry whatever the
+  // user had chosen into both of the new scales.
+  const raw = typeof s.fontScale === 'number' ? s.fontScale : 1;
+  const shared = clampFontScale(version < 2 ? raw / V2_SCALE_REBASE : raw);
+  return { readScale: shared, promptScale: shared, mode };
 }
 
 export function saveSettings(settings: Settings): boolean {

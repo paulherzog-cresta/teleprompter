@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
+import { ReaderIcon, TextAlignMiddleIcon } from '@radix-ui/react-icons';
 import type { ReadingMode, Script } from '../types';
 import { useWakeLock } from '../lib/useWakeLock';
 import { PromptView } from './PromptView';
@@ -37,6 +38,8 @@ export function Reader({ script, mode, onMode, onCursor, onPickRole, onExit }: P
     return () => observer.disconnect();
   }, []);
 
+  // Bumped to ask whichever view is showing to run back to the first entry.
+  const [topSignal, setTopSignal] = useState(0);
   const [progressIndex, setProgressIndex] = useState(script.cursor);
   const handleCursor = useCallback(
     (cursor: number) => {
@@ -70,7 +73,15 @@ export function Reader({ script, mode, onMode, onCursor, onPickRole, onExit }: P
         <button className="icon-button" onClick={onExit} aria-label="Back to library">
           ‹
         </button>
-        <span className="reader-bar-title">{script.title}</span>
+        {/* A wide target across the middle of the bar: tap the top of the
+            screen to run back to the start of the script. */}
+        <button
+          className="reader-bar-title"
+          onClick={() => setTopSignal((n) => n + 1)}
+          title="Back to the top of the script"
+        >
+          {script.title}
+        </button>
         <ToggleGroup.Root
           className="segmented"
           type="single"
@@ -81,11 +92,21 @@ export function Reader({ script, mode, onMode, onCursor, onPickRole, onExit }: P
             if (next === 'read' || next === 'prompt') onMode(next);
           }}
         >
-          <ToggleGroup.Item className="segmented-item" value="read">
-            Read
+          <ToggleGroup.Item
+            className="segmented-item"
+            value="read"
+            aria-label="Reading view"
+            title="Reading view"
+          >
+            <ReaderIcon />
           </ToggleGroup.Item>
-          <ToggleGroup.Item className="segmented-item" value="prompt">
-            Prompt
+          <ToggleGroup.Item
+            className="segmented-item"
+            value="prompt"
+            aria-label="Teleprompter"
+            title="Teleprompter"
+          >
+            <TextAlignMiddleIcon />
           </ToggleGroup.Item>
         </ToggleGroup.Root>
       </header>
@@ -98,6 +119,7 @@ export function Reader({ script, mode, onMode, onCursor, onPickRole, onExit }: P
           cursor={script.cursor}
           onCursor={handleCursor}
           onLeaveMode={toRead}
+          topSignal={topSignal}
         />
       ) : (
         <ReadView
@@ -108,6 +130,7 @@ export function Reader({ script, mode, onMode, onCursor, onPickRole, onExit }: P
           onCursor={handleCursor}
           onLeaveMode={toPrompt}
           topInset={barHeight}
+          topSignal={topSignal}
         />
       )}
 

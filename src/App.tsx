@@ -90,8 +90,10 @@ export default function App() {
   }, [settings]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--font-scale', String(settings.fontScale));
-  }, [settings.fontScale]);
+    const root = document.documentElement.style;
+    root.setProperty('--read-scale', String(settings.readScale));
+    root.setProperty('--prompt-scale', String(settings.promptScale));
+  }, [settings.readScale, settings.promptScale]);
 
 
   const importScript = useCallback(

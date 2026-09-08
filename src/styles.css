@@ -40,10 +40,12 @@
   /* Vertical rhythm. Screens stack their children on this. */
   --gap: 18px;
 
-  --font-scale: 1;
-  /* Rebased in v2: 100% here is what used to read as 150% on the slider.
-     loadSettings divides an older stored scale through to match. */
-  --reader-base: calc(48px * var(--font-scale));
+  /* One scale per mode: reading and glancing want different sizes. Each view
+     sets --reader-base from its own scale; this is only the fallback for
+     previews outside either mode. */
+  --read-scale: 1;
+  --prompt-scale: 1;
+  --reader-base: 22px;
 
   color-scheme: dark;
 }
@@ -229,10 +231,11 @@ body {
   border: 0;
   background: transparent;
   color: var(--muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 6px 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 30px;
   border-radius: 999px;
   cursor: pointer;
   transition:
@@ -247,6 +250,11 @@ body {
 .segmented-item[data-state='on'] {
   background: var(--accent);
   color: #ffffff;
+}
+
+.segmented-item svg {
+  width: 17px;
+  height: 17px;
 }
 
 .segmented-item:focus-visible {
@@ -445,7 +453,7 @@ ul.banner-warn {
 }
 
 .preview {
-  --reader-base: calc(19px * var(--font-scale));
+  --reader-base: 19px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -461,9 +469,13 @@ ul.banner-warn {
   margin-bottom: 0;
 }
 
-/* Shows the slider's effect at the size read mode actually uses. */
-.preview.preview-live {
-  --reader-base: calc(24px * var(--font-scale));
+/* Each slider previews at the size its own mode actually uses. */
+.preview.preview-read {
+  --reader-base: calc(22px * var(--read-scale));
+}
+
+.preview.preview-prompt {
+  --reader-base: calc(34px * var(--prompt-scale));
 }
 
 .empty {
@@ -937,14 +949,34 @@ ul.banner-warn {
   opacity: 1;
 }
 
+/* A button, not a label: this is the tap-to-jump-to-the-top target, and it
+   stretches so most of the bar is hittable. */
 .reader-bar-title {
   flex: 1;
+  min-width: 0;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 10px 6px;
+  border-radius: var(--radius);
   text-align: center;
+  font: inherit;
   font-size: 13px;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.reader-bar-title:hover {
+  color: var(--fg);
+  background: var(--surface-raised);
+}
+
+.reader-bar-title:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
 }
 
 .reader-surface {
@@ -969,6 +1001,11 @@ ul.banner-warn {
 
 .reader-surface::-webkit-scrollbar {
   display: none;
+}
+
+.reader-prompt .reader-surface {
+  /* Bigger than reading size: this one is meant to be glanced at, not read. */
+  --reader-base: calc(34px * var(--prompt-scale));
 }
 
 .reader-stack {
@@ -1019,8 +1056,8 @@ ul.banner-warn {
   /* Vertical panning stays native; pinch is ours, for the mode shortcut. */
   touch-action: pan-y;
   scrollbar-width: none;
-  /* Two thirds the prompt size: comfortable to read, not to glance at. */
-  --reader-base: calc(24px * var(--font-scale));
+  /* Comfortable to read, rather than sized to glance at. */
+  --reader-base: calc(22px * var(--read-scale));
 }
 
 .readview::-webkit-scrollbar {
@@ -1048,6 +1085,16 @@ ul.banner-warn {
 
 .readview .entry-text {
   line-height: 1.4;
+}
+
+/* Spoken lines are tap targets here: tapping runs one up to the reading
+   position. Directions are cues, so they stay inert. */
+.readview .entry.is-tappable {
+  cursor: pointer;
+}
+
+.readview .entry.is-tappable:active .entry-body {
+  opacity: 0.6;
 }
 
 @media (prefers-reduced-motion: reduce) {
