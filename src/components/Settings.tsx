@@ -1,6 +1,9 @@
+import { useState } from 'react';
+import * as Slider from '@radix-ui/react-slider';
 import type { Settings as SettingsValue } from '../types';
 import { FONT_SCALE_MAX, FONT_SCALE_MIN } from '../lib/storage';
 import { wakeLockSupported } from '../lib/useWakeLock';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type Props = {
   settings: SettingsValue;
@@ -11,6 +14,8 @@ type Props = {
 };
 
 export function Settings({ settings, scriptCount, onChange, onClearAll, onBack }: Props) {
+  const [confirmClear, setConfirmClear] = useState(false);
+
   return (
     <div className="screen">
       <header className="app-bar">
@@ -23,25 +28,37 @@ export function Settings({ settings, scriptCount, onChange, onClearAll, onBack }
       <div className="screen-body">
         <div className="field">
           <span className="field-label">Text size — {Math.round(settings.fontScale * 100)}%</span>
-          <input
+          <Slider.Root
             className="slider"
-            type="range"
             min={FONT_SCALE_MIN}
             max={FONT_SCALE_MAX}
             step={0.05}
-            value={settings.fontScale}
-            onChange={(e) => onChange({ ...settings, fontScale: Number(e.target.value) })}
-          />
-          <div className="preview">
+            value={[settings.fontScale]}
+            onValueChange={([fontScale]) => onChange({ ...settings, fontScale })}
+          >
+            <Slider.Track className="slider-track">
+              <Slider.Range className="slider-range" />
+            </Slider.Track>
+            <Slider.Thumb className="slider-thumb" aria-label="Text size" />
+          </Slider.Root>
+
+          <div className="preview" style={{ marginTop: 'var(--gap)' }}>
             <div className="entry entry-mine">
-              <p className="entry-text">This is how your own lines will look.</p>
+              <div className="entry-body">
+                <span className="entry-role">You</span>
+                <p className="entry-text">This is how your own lines will look.</p>
+              </div>
             </div>
             <div className="entry entry-other">
-              <span className="entry-role">Customer</span>
-              <p className="entry-text">And this is the other role.</p>
+              <div className="entry-body">
+                <span className="entry-role">Customer</span>
+                <p className="entry-text">And this is the other role.</p>
+              </div>
             </div>
             <div className="entry entry-direction">
-              <p className="entry-text">Pause here, let it land.</p>
+              <div className="entry-body">
+                <p className="entry-text">Pause here, let it land.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -57,16 +74,9 @@ export function Settings({ settings, scriptCount, onChange, onClearAll, onBack }
           </p>
           <button
             className="button button-danger"
+            style={{ marginTop: 'var(--gap)' }}
             disabled={scriptCount === 0}
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Delete all ${scriptCount} scripts on this device? This cannot be undone.`,
-                )
-              ) {
-                onClearAll();
-              }
-            }}
+            onClick={() => setConfirmClear(true)}
           >
             Clear all scripts
           </button>
@@ -76,6 +86,18 @@ export function Settings({ settings, scriptCount, onChange, onClearAll, onBack }
           Teleprompter {__APP_VERSION__} · built {__BUILD_DATE__}
         </p>
       </div>
+
+      <ConfirmDialog
+        open={confirmClear}
+        onOpenChange={setConfirmClear}
+        title={`Delete all ${scriptCount} scripts?`}
+        description="Every script on this device goes, along with its reading position. This cannot be undone."
+        confirmLabel="Delete everything"
+        onConfirm={() => {
+          onClearAll();
+          setConfirmClear(false);
+        }}
+      />
     </div>
   );
 }

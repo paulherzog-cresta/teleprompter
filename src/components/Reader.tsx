@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
 import type { Script } from '../types';
 import { useWakeLock } from '../lib/useWakeLock';
 import { entryTypeClass } from '../lib/entryStyle';
@@ -42,6 +43,8 @@ function touchDistance(touches: React.TouchList): number {
 export function Reader({ script, onCursor, onPickRole, onExit }: Props) {
   const { entries, myRole } = script;
   const [overviewOpen, setOverviewOpen] = useState(false);
+  // Asked once on entry. Dismissing leaves the script readable, just unhighlighted.
+  const [rolePromptOpen, setRolePromptOpen] = useState(script.myRole === null);
 
   // The scroll position is the source of truth while the reader is open. The
   // cursor is derived from it and pushed back up for persistence, rather than
@@ -323,10 +326,12 @@ export function Reader({ script, onCursor, onPickRole, onExit }: Props) {
                 }}
                 className={`entry ${entryTypeClass(entry, myRole)} ${position}`}
               >
-                {entry.kind === 'line' && entry.role !== myRole && (
-                  <span className="entry-role">{entry.role}</span>
-                )}
-                <p className="entry-text">{entry.text}</p>
+                <div className="entry-body">
+                  {/* Both names are labelled, not just the other role's — at a
+                      glance the label is what says whose line this is. */}
+                  {entry.kind === 'line' && <span className="entry-role">{entry.role}</span>}
+                  <p className="entry-text">{entry.text}</p>
+                </div>
               </div>
             );
           })}
@@ -346,21 +351,31 @@ export function Reader({ script, onCursor, onPickRole, onExit }: Props) {
         />
       )}
 
-      {myRole === null && script.roles.length > 0 && (
-        <div className="role-prompt" role="dialog" aria-label="Pick your role">
-          <div className="role-prompt-card">
-            <h2>Which one are you?</h2>
-            <p className="hint">Your lines get the brightest, largest text.</p>
+      <Dialog.Root open={rolePromptOpen} onOpenChange={setRolePromptOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content className="dialog-content">
+            <Dialog.Title className="dialog-title">Which one are you?</Dialog.Title>
+            <Dialog.Description className="dialog-description">
+              Your lines get the brightest text and your name in colour.
+            </Dialog.Description>
             <div className="role-options">
               {script.roles.map((role) => (
-                <button key={role} className="role-option" onClick={() => onPickRole(role)}>
+                <button
+                  key={role}
+                  className="role-option"
+                  onClick={() => {
+                    onPickRole(role);
+                    setRolePromptOpen(false);
+                  }}
+                >
                   {role}
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-      )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

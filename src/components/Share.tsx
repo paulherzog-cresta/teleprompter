@@ -86,7 +86,7 @@ export function Share({ script, onBack }: Props) {
       </header>
 
       <div className="screen-body">
-        <div className="share">
+        <div className="share stack">
           <div className="share-qr">
             <canvas ref={canvasRef} style={{ width: pixels, height: pixels }} />
           </div>

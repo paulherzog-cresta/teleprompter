@@ -1,12 +1,44 @@
+@import '@radix-ui/colors/slate-dark.css';
+@import '@radix-ui/colors/slate-dark-alpha.css';
+@import '@radix-ui/colors/blue-dark.css';
+@import '@radix-ui/colors/blue-dark-alpha.css';
+@import '@radix-ui/colors/amber-dark.css';
+@import '@radix-ui/colors/amber-dark-alpha.css';
+@import '@radix-ui/colors/red-dark.css';
+
+/* Semantic names over the Radix scales, so the steps stay meaningful:
+   1-2 backgrounds, 3-5 component fills, 6-8 borders, 9-10 solids, 11 muted
+   text, 12 high-contrast text. */
 :root {
-  --bg: #0b0b0d;
-  --surface: #16161a;
-  --fg: #f2f2f4;
-  --muted: #8c8c96;
-  --line: #232329;
-  --line-strong: #33333c;
-  --accent: #7aa2f7;
-  --danger: #ff6b6b;
+  --bg: var(--slate-1);
+  --surface: var(--slate-2);
+  --surface-raised: var(--slate-3);
+  --surface-hover: var(--slate-4);
+  --line: var(--slate-6);
+  --line-strong: var(--slate-7);
+  --muted: var(--slate-11);
+  --fg: var(--slate-12);
+
+  --accent: var(--blue-9);
+  --accent-hover: var(--blue-10);
+  --accent-text: var(--blue-11);
+  --accent-line: var(--blue-8);
+  --accent-soft: var(--blue-a3);
+
+  --direction-bg: var(--amber-a3);
+  --direction-line: var(--amber-a8);
+  --direction-fg: var(--amber-11);
+
+  --danger: var(--red-11);
+  --danger-solid: var(--red-9);
+  --danger-line: var(--red-8);
+  --danger-soft: var(--red-3);
+
+  --radius: 10px;
+  --radius-lg: 16px;
+
+  /* Vertical rhythm. Screens stack their children on this. */
+  --gap: 18px;
 
   --font-scale: 1;
   --reader-base: calc(32px * var(--font-scale));
@@ -36,6 +68,18 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ---------- shared chrome ---------- */
 
 .screen {
@@ -52,12 +96,14 @@ body {
   gap: 10px;
   padding: calc(env(safe-area-inset-top) + 12px) 14px 12px;
   border-bottom: 1px solid var(--line);
+  background: var(--bg);
 }
 
 .app-bar-title {
   margin: 0;
   font-size: 17px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .app-bar-actions {
@@ -71,7 +117,13 @@ body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 40px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 48px);
+}
+
+/* Anything that wants even breathing room between its children. The doubled
+   class outweighs the element margins it is overriding, such as .hint. */
+.stack.stack > * + * {
+  margin-top: var(--gap);
 }
 
 @media (min-width: 720px) {
@@ -88,26 +140,39 @@ body {
 .button {
   appearance: none;
   border: 1px solid var(--line-strong);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--fg);
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: 9px 14px;
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 120ms ease-out,
+    border-color 120ms ease-out;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-hover);
 }
 
 .button:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: default;
 }
 
 .button-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0b0b0d;
+  color: #ffffff;
   font-weight: 600;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .button-quiet {
@@ -116,8 +181,12 @@ body {
 
 .button-danger {
   background: transparent;
-  border-color: var(--danger);
+  border-color: var(--danger-line);
   color: var(--danger);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: var(--danger-soft);
 }
 
 .icon-button {
@@ -127,18 +196,32 @@ body {
   color: var(--fg);
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-size: 20px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex: none;
+}
+
+.icon-button:hover {
+  background: var(--surface-raised);
+}
+
+:where(.button, .icon-button, .role-option, .overview-item, .input, .textarea):focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
 }
 
 .field {
   display: block;
-  padding: 16px;
+  padding: var(--gap) 16px;
+}
+
+.field + .field {
+  padding-top: 0;
 }
 
 .field-label {
@@ -154,12 +237,12 @@ body {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .hint code {
   font-size: 12px;
-  background: var(--surface);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 1px 4px;
@@ -174,10 +257,15 @@ body {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius);
   color: var(--fg);
   font: inherit;
   padding: 11px 12px;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--slate-9);
 }
 
 .textarea {
@@ -186,68 +274,89 @@ body {
   font-size: 14px;
   line-height: 1.5;
   resize: vertical;
+  display: block;
 }
+
+/* ---------- radix slider ---------- */
 
 .slider {
-  width: 100%;
-  accent-color: var(--accent);
-}
-
-.drop {
-  border-radius: 10px;
-  transition: box-shadow 120ms ease-out;
-}
-
-.drop.is-dragging {
-  box-shadow: 0 0 0 2px var(--accent);
-}
-
-.drop-actions {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  width: 100%;
+  height: 28px;
+  touch-action: none;
+  user-select: none;
 }
 
-.drop-actions .hint {
-  margin: 0;
+.slider-track {
+  position: relative;
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-hover);
 }
+
+.slider-range {
+  position: absolute;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.slider-thumb {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 0;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+
+.slider-thumb:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+
+/* ---------- banners ---------- */
 
 .banner {
-  margin: 0 16px 8px;
+  margin: 0 16px;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .banner-error {
-  background: rgba(255, 107, 107, 0.12);
-  border: 1px solid rgba(255, 107, 107, 0.35);
-  color: #ffb3b3;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
+}
+
+.banner-warn,
+.banner-block {
+  background: var(--direction-bg);
+  border: 1px solid var(--direction-line);
+  color: var(--direction-fg);
+}
+
+ul.banner-warn {
+  list-style: disc;
+  padding-left: 32px;
+  padding-right: 14px;
 }
 
 .banner-block {
   max-width: 44em;
   margin-inline: auto;
   text-align: left;
-  background: rgba(255, 193, 94, 0.1);
-  border: 1px solid rgba(255, 193, 94, 0.3);
-  color: #ffd9a0;
-}
-
-ul.banner-warn {
-  background: rgba(255, 193, 94, 0.1);
-  border: 1px solid rgba(255, 193, 94, 0.3);
-  color: #ffd9a0;
-  list-style: disc;
-  padding-left: 32px;
-  padding-right: 14px;
 }
 
 .parse-summary {
-  padding: 6px 16px 0;
+  padding: 0 16px;
   color: var(--muted);
   font-size: 14px;
 }
@@ -255,6 +364,8 @@ ul.banner-warn {
 .parse-summary strong {
   color: var(--fg);
 }
+
+/* ---------- radix radio group ---------- */
 
 .role-options {
   display: flex;
@@ -265,19 +376,27 @@ ul.banner-warn {
 .role-option {
   appearance: none;
   border: 1px solid var(--line-strong);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--fg);
   border-radius: 999px;
   padding: 9px 16px;
   font: inherit;
   font-size: 14px;
   cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    border-color 120ms ease-out;
 }
 
+.role-option:hover {
+  background: var(--surface-hover);
+}
+
+.role-option[data-state='checked'],
 .role-option.is-selected {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0b0b0d;
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -286,12 +405,12 @@ ul.banner-warn {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 14px;
+  padding: 16px;
 }
 
 .preview .entry {
   padding: 0;
-  margin: 0 0 12px;
+  margin: 0 0 14px;
 }
 
 .preview .entry:last-child {
@@ -308,20 +427,105 @@ ul.banner-warn {
   margin: 8px auto 20px;
 }
 
-.notice {
+/* ---------- radix toast ---------- */
+
+.toast-viewport {
   position: fixed;
   left: 50%;
-  bottom: calc(env(safe-area-inset-bottom) + 20px);
   transform: translateX(-50%);
-  z-index: 50;
-  max-width: min(560px, calc(100vw - 32px));
-  padding: 11px 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 20px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(560px, calc(100vw - 32px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  outline: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
   border-radius: 999px;
-  background: #1d1d22;
+  background: var(--surface-raised);
   border: 1px solid var(--line-strong);
+  color: var(--fg);
   font-size: 14px;
-  text-align: center;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  line-height: 1.4;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
+}
+
+.toast-description {
+  flex: 1;
+  margin: 0;
+}
+
+.toast[data-state='open'] {
+  animation: toast-in 160ms ease-out;
+}
+
+.toast[data-state='closed'] {
+  animation: toast-out 120ms ease-in;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ---------- radix dialogs ---------- */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.dialog-content {
+  position: fixed;
+  z-index: 41;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 32px));
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.dialog-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dialog-description {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 /* ---------- library ---------- */
@@ -340,13 +544,19 @@ ul.banner-warn {
 
 .library-row-inner {
   position: relative;
+  /* Above the delete action, so it covers it until the row is swiped. */
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 15px 16px 17px;
+  gap: 10px;
+  padding: 16px;
   background: var(--bg);
   cursor: pointer;
   transition: transform 180ms ease-out;
+}
+
+.library-row-inner:hover {
+  background: var(--surface);
 }
 
 .library-row.is-swiped .library-row-inner {
@@ -374,6 +584,13 @@ ul.banner-warn {
   color: var(--muted);
 }
 
+.library-row-actions {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
 .library-row-progress {
   position: absolute;
   left: 0;
@@ -386,18 +603,18 @@ ul.banner-warn {
 .library-row-progress > div {
   height: 100%;
   background: var(--accent);
-  opacity: 0.7;
 }
 
 .library-delete {
   position: absolute;
+  z-index: 0;
   top: 0;
   right: 0;
   bottom: 0;
   width: 104px;
   border: 0;
-  background: var(--danger);
-  color: #12030a;
+  background: var(--danger-solid);
+  color: #ffffff;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -417,52 +634,67 @@ ul.banner-warn {
   .narrow-only {
     display: none;
   }
+
+  .library-row-actions {
+    display: flex;
+  }
+
+  /* Swipe is a touch idiom; with a mouse the actions are already visible, so
+     the hidden delete panel must never be reachable underneath them. */
+  .library-delete {
+    display: none;
+  }
 }
 
 /* ---------- share and scan ---------- */
 
 .share,
 .scan {
-  padding: 20px 16px 32px;
+  padding: 24px 16px 40px;
   text-align: center;
 }
 
 .share-qr {
   display: inline-block;
-  padding: 14px;
-  border-radius: 16px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   line-height: 0;
 }
 
 .share-qr canvas {
   display: block;
-  max-width: min(70vw, 70vh);
-  max-height: min(70vw, 70vh);
+  max-width: min(70vw, 60vh);
+  max-height: min(70vw, 60vh);
 }
 
-.share-status {
-  margin: 16px 0 0;
+.share-status,
+.scan-status {
+  margin: 0;
   font-size: 15px;
+  line-height: 1.5;
 }
 
 .share-dots {
   display: flex;
   justify-content: center;
-  gap: 7px;
-  margin-top: 12px;
+  gap: 10px;
 }
 
 .share-dots span {
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: var(--line-strong);
-  transition: background 150ms ease-out;
+  background: var(--surface-hover);
+  border: 1px solid var(--line-strong);
+  transition:
+    background 150ms ease-out,
+    border-color 150ms ease-out;
 }
 
 .share-dots span.is-active {
   background: var(--accent);
+  border-color: var(--accent);
 }
 
 .share-link {
@@ -470,7 +702,7 @@ ul.banner-warn {
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  margin: 20px auto 0;
+  margin-inline: auto;
   max-width: 620px;
 }
 
@@ -488,10 +720,10 @@ ul.banner-warn {
 
 .scan-frame {
   position: relative;
-  margin: 0 auto;
-  width: min(420px, 82vw);
+  margin-inline: auto;
+  width: min(420px, 78vw);
   aspect-ratio: 1;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: #000000;
   border: 1px solid var(--line-strong);
@@ -503,9 +735,27 @@ ul.banner-warn {
   object-fit: cover;
 }
 
-.scan-status {
-  margin: 16px 0 0;
-  font-size: 15px;
+/* ---------- editor drop zone ---------- */
+
+.drop {
+  border-radius: var(--radius);
+  transition: box-shadow 120ms ease-out;
+}
+
+.drop.is-dragging {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.drop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.drop-actions .hint {
+  margin: 0;
 }
 
 /* ---------- entries, shared by reader and previews ---------- */
@@ -528,9 +778,17 @@ ul.banner-warn {
 .entry-role {
   display: block;
   margin-bottom: 6px;
-  font-size: calc(var(--reader-base) * 0.4);
+  font-size: calc(var(--reader-base) * 0.36);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+/* Your own name in the accent colour: the fastest way to tell at a glance
+   whether the line on the reading line is yours to say. */
+.entry-mine .entry-role {
+  color: var(--accent-text);
 }
 
 .entry-mine {
@@ -543,20 +801,31 @@ ul.banner-warn {
 }
 
 .entry-other {
-  --type-opacity: 0.62;
+  --type-opacity: 0.72;
 }
 
 .entry-other .entry-text {
   font-size: calc(var(--reader-base) * 0.85);
 }
 
+/* A direction is not something anyone says, so it does not look like dialogue
+   at all — it is a boxed note in a different hue. */
 .entry-direction {
-  --type-opacity: 0.5;
+  --type-opacity: 0.9;
+}
+
+.entry-direction .entry-body {
+  display: block;
+  border-left: 3px solid var(--direction-line);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--direction-bg);
+  padding: calc(var(--reader-base) * 0.28) calc(var(--reader-base) * 0.4);
 }
 
 .entry-direction .entry-text {
-  font-size: calc(var(--reader-base) * 0.72);
+  font-size: calc(var(--reader-base) * 0.62);
   font-style: italic;
+  color: var(--direction-fg);
 }
 
 /* ---------- reader ---------- */
@@ -575,7 +844,7 @@ ul.banner-warn {
   right: 0;
   height: 2px;
   background: var(--line);
-  z-index: 3;
+  z-index: 4;
 }
 
 .reader-progress-fill {
@@ -589,20 +858,32 @@ ul.banner-warn {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: calc(env(safe-area-inset-top) + 8px) 8px 8px;
-  /* Only the buttons should swallow taps; the rest of the strip still advances. */
+  /* Opaque: text used to scroll through it. */
+  background: var(--bg);
+}
+
+/* Softens the hard edge where text passes under the bar. */
+.reader-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 28px;
+  background: linear-gradient(to bottom, var(--bg), transparent);
   pointer-events: none;
 }
 
 .reader-bar .icon-button {
-  pointer-events: auto;
-  opacity: 0.35;
+  opacity: 0.55;
 }
 
+.reader-bar .icon-button:hover,
 .reader-bar .icon-button:active {
   opacity: 1;
 }
@@ -632,6 +913,13 @@ ul.banner-warn {
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
+  /* The progress bar already says where you are; a scrollbar is just clutter
+     across the text. */
+  scrollbar-width: none;
+}
+
+.reader-surface::-webkit-scrollbar {
+  display: none;
 }
 
 .reader-stack {
@@ -643,13 +931,13 @@ ul.banner-warn {
 .reader-anchor {
   position: absolute;
   left: 0;
-  z-index: 1;
+  z-index: 2;
   width: 3px;
   height: 30px;
   margin-top: -7px;
   border-radius: 0 3px 3px 0;
   background: var(--accent);
-  opacity: 0.4;
+  opacity: 0.5;
   pointer-events: none;
 }
 
@@ -676,7 +964,7 @@ ul.banner-warn {
 .overview {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 41;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -686,8 +974,10 @@ ul.banner-warn {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: calc(env(safe-area-inset-top) + 10px) 12px 10px 16px;
   border-bottom: 1px solid var(--line);
+  background: var(--bg);
 }
 
 .overview-title {
@@ -701,7 +991,7 @@ ul.banner-warn {
   -webkit-overflow-scrolling: touch;
   list-style: none;
   margin: 0;
-  padding: 6px 0 calc(env(safe-area-inset-bottom) + 32px);
+  padding: 8px 0 calc(env(safe-area-inset-bottom) + 32px);
 }
 
 .overview-item {
@@ -712,8 +1002,12 @@ ul.banner-warn {
   background: none;
   color: inherit;
   font: inherit;
-  padding: 9px 16px;
+  padding: 10px 16px;
   cursor: pointer;
+}
+
+.overview-item:hover {
+  background: var(--surface);
 }
 
 .overview-item.entry-mine {
@@ -721,26 +1015,40 @@ ul.banner-warn {
 }
 
 .overview-item.entry-other {
-  opacity: 0.62;
+  opacity: 0.72;
 }
 
 .overview-item.entry-direction {
-  opacity: 0.5;
+  opacity: 0.95;
+}
+
+.overview-item.entry-direction .overview-text {
+  display: block;
+  border-left: 3px solid var(--direction-line);
+  border-radius: 0 6px 6px 0;
+  background: var(--direction-bg);
+  color: var(--direction-fg);
   font-style: italic;
+  padding: 7px 10px;
 }
 
 .overview-item.is-current {
-  background: rgba(122, 162, 247, 0.14);
+  background: var(--accent-soft);
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .overview-role {
   display: block;
   font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--muted);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+}
+
+.overview-item.entry-mine .overview-role {
+  color: var(--accent-text);
 }
 
 .overview-text {
@@ -750,42 +1058,12 @@ ul.banner-warn {
   white-space: pre-wrap;
 }
 
-/* ---------- role prompt ---------- */
-
-.role-prompt {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(11, 11, 13, 0.88);
-}
-
-.role-prompt-card {
-  width: 100%;
-  max-width: 420px;
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 16px;
-  padding: 22px;
-}
-
-.role-prompt-card h2 {
-  margin: 0;
-  font-size: 19px;
-}
-
-.role-prompt-card .hint {
-  margin-bottom: 18px;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .reader-stack,
   .reader-progress-fill,
   .entry,
-  .library-row-inner {
+  .library-row-inner,
+  .toast {
     transition: none;
+    animation: none;
   }
 }

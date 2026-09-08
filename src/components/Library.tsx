@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Script } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type Props = {
   scripts: Script[];
@@ -25,13 +26,12 @@ export function Library({
   onSettings,
 }: Props) {
   const [swipedId, setSwipedId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Script | null>(null);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
-  const confirmDelete = (script: Script) => {
+  const askDelete = (script: Script) => {
     setSwipedId(null);
-    if (window.confirm(`Delete "${script.title}"? This device only — it cannot be undone.`)) {
-      onDelete(script.id);
-    }
+    setPendingDelete(script);
   };
 
   const sorted = [...scripts].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -59,7 +59,8 @@ export function Library({
           <div className="empty">
             <p>No scripts yet.</p>
             <p className="hint">
-              Copy a role-play sheet — header row on top, one column per role — and paste it in.
+              Copy a role-play sheet — header row on top, one column per role — and paste it in, or
+              drop the exported CSV straight onto the box.
             </p>
             <button className="button button-primary" onClick={onNew}>
               Add your first script
@@ -94,7 +95,7 @@ export function Library({
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
-                      confirmDelete(script);
+                      askDelete(script);
                     }}
                     onClick={() => {
                       if (swipedId === script.id) setSwipedId(null);
@@ -105,34 +106,49 @@ export function Library({
                       <span className="library-row-title">{script.title}</span>
                       <span className="library-row-meta">
                         {script.myRole ? `${script.myRole} · ` : 'no role picked · '}
-                        {script.cursor > 0 ? `line ${script.cursor + 1} of ${total}` : `${total} entries`}
+                        {script.cursor > 0
+                          ? `line ${script.cursor + 1} of ${total}`
+                          : `${total} entries`}
                       </span>
                     </div>
-                    <button
-                      className="button button-quiet wide-only"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onShare(script.id);
-                      }}
-                    >
-                      Send to phone
-                    </button>
-                    <button
-                      className="button button-quiet wide-only"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(script.id);
-                      }}
-                    >
-                      Edit
-                    </button>
+
+                    {/* Wide screens only. On touch these live behind the swipe. */}
+                    <div className="library-row-actions">
+                      <button
+                        className="button button-quiet"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onShare(script.id);
+                        }}
+                      >
+                        Send to phone
+                      </button>
+                      <button
+                        className="button button-quiet"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(script.id);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="button button-quiet button-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          askDelete(script);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
 
                     <div className="library-row-progress">
                       <div style={{ width: `${progress}%` }} />
                     </div>
                   </div>
 
-                  <button className="library-delete" onClick={() => confirmDelete(script)}>
+                  <button className="library-delete" onClick={() => askDelete(script)}>
                     Delete
                   </button>
                 </li>
@@ -141,6 +157,20 @@ export function Library({
           </ul>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title={`Delete "${pendingDelete?.title ?? ''}"?`}
+        description="This removes it from this device only, and cannot be undone. If the script came from a link or a QR code, you can bring it back the same way."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (pendingDelete) onDelete(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+      />
     </div>
   );
 }

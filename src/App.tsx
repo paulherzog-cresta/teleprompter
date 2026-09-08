@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import * as Toast from '@radix-ui/react-toast';
 import type { Script, Settings as SettingsValue } from './types';
 import { Library } from './components/Library';
 import { Editor, type EditorDraft } from './components/Editor';
@@ -51,6 +52,12 @@ export default function App() {
     window.history.pushState({ teleprompter: true }, '');
   }, []);
 
+  /** Swap the top screen rather than stacking on it, so back skips it. */
+  const replace = useCallback((next: View) => {
+    setStack((current) => [...current.slice(0, -1), next]);
+    window.history.replaceState({ teleprompter: true }, '');
+  }, []);
+
   const back = useCallback(() => {
     if (stackRef.current.length > 1) window.history.back();
   }, []);
@@ -86,11 +93,6 @@ export default function App() {
     document.documentElement.style.setProperty('--font-scale', String(settings.fontScale));
   }, [settings.fontScale]);
 
-  useEffect(() => {
-    if (notice === null) return;
-    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
 
   const importScript = useCallback(
     (incoming: HandoffScript) => {
@@ -129,9 +131,14 @@ export default function App() {
         );
       }
 
-      push({ name: 'reader', id: incoming.id });
+      // Arriving from the scanner, the scan screen is done with — replacing it
+      // means back from the reader lands on the library, not the camera.
+      const top = stackRef.current[stackRef.current.length - 1];
+      const next: View = { name: 'reader', id: incoming.id };
+      if (top.name === 'scan') replace(next);
+      else push(next);
     },
-    [push],
+    [push, replace],
   );
 
   // A script can arrive as a link as well as a scan — same payload either way.
@@ -286,13 +293,26 @@ export default function App() {
   }
 
   return (
-    <>
+    <Toast.Provider duration={NOTICE_MS} swipeDirection="down">
       {screen}
-      {notice !== null && (
-        <div className="notice" role="status">
-          {notice}
-        </div>
-      )}
-    </>
+      <Toast.Root
+        // Re-keying makes a second message announce and restart its timer
+        // rather than silently replacing the text of the first.
+        key={notice}
+        className="toast"
+        open={notice !== null}
+        onOpenChange={(open) => {
+          if (!open) setNotice(null);
+        }}
+      >
+        <Toast.Description className="toast-description">{notice}</Toast.Description>
+        <Toast.Close asChild>
+          <button className="icon-button" aria-label="Dismiss">
+            ✕
+          </button>
+        </Toast.Close>
+      </Toast.Root>
+      <Toast.Viewport className="toast-viewport" />
+    </Toast.Provider>
   );
 }

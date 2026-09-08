@@ -154,13 +154,13 @@ export function Scan({ onImport, onPasteInstead, onBack }: Props) {
             </button>
           </div>
         ) : (
-          <div className="scan">
+          <div className="scan stack">
             <div className="scan-frame">
               <video ref={videoRef} playsInline muted />
               <canvas ref={canvasRef} hidden />
             </div>
 
-            <p className="scan-status">
+            <p className="scan-status" role="status">
               {progress.total === 0
                 ? status.kind === 'starting'
                   ? 'Starting the camera…'
