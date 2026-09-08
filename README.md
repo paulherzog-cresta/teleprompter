@@ -17,14 +17,22 @@ Author on the laptop, read on the phone. The layout switches on viewport width: 
 the editor and **Send to phone**, narrow screens get **Scan**.
 
 1. On the laptop, add the script — paste it, or drop a CSV/TSV straight onto the box.
-2. Hit **Send to phone**. You get a QR code, cycling if the script needs more than one.
-3. On the phone, hit **Scan** and point it at the laptop. There is nothing to tap on either side;
-   hold steady and the codes come round. A 60-entry script is three codes, about five seconds.
+2. Hit **Send to phone**. You get a QR code.
+3. Point your phone's **normal camera app** at it and tap the link it offers. That opens the
+   teleprompter with the script already in it.
 
-**Copy link** next to the QR does the same job without a camera. The whole script rides in the
-part of the URL after the `#`, which browsers never send to a server — so pasting that link into a
-Slack DM is how you hand a script to a teammate, and how you skip the QR when a script is unusually
-long.
+The QR holds the entire link, so there is nothing to open on the phone first. A script of up to
+roughly 100 entries fits in one code; a real 60-entry script lands around QR version 33, which a
+phone camera reads comfortably from a foot away.
+
+Past that, the link is too long for a single code and the app falls back to splitting it across
+several that cycle on a loop. A split code is **not** a link, so the camera app cannot read it —
+the screen says so, and you use **Scan** inside the teleprompter instead, which reassembles the
+pieces as they come round.
+
+**Copy link** does the same job with no camera at all. The whole script rides in the part of the
+URL after the `#`, which browsers never send to a server — so pasting that link into a Slack DM is
+how you hand a script to a teammate, and the reliable escape hatch for a very long script.
 
 Nothing about your reading position or text size travels. Those stay on the device they were set
 on.

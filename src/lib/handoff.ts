@@ -234,6 +234,24 @@ export function parseChunk(raw: string): Chunk | null {
   return { s: chunk.s, c: chunk.c, n: chunk.n, d: chunk.d };
 }
 
+export type ScannedCode =
+  | { kind: 'payload'; encoded: string }
+  | { kind: 'chunk'; chunk: Chunk };
+
+/**
+ * A scanned code is either a whole handoff link — which is also what a phone's
+ * own camera app can open — or one chunk of a script too long to fit in one.
+ */
+export function readScannedCode(raw: string): ScannedCode | null {
+  const hashIndex = raw.indexOf('#s=');
+  if (hashIndex !== -1) {
+    const encoded = readHandoffFromHash(raw.slice(hashIndex));
+    if (encoded !== null) return { kind: 'payload', encoded };
+  }
+  const chunk = parseChunk(raw);
+  return chunk === null ? null : { kind: 'chunk', chunk };
+}
+
 export type AssemblyState = { captured: number; total: number; encoded: string | null };
 
 /** Collects chunks as the phone sees them, in whatever order they cycle past. */

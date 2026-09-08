@@ -4,7 +4,7 @@ import {
   ChunkAssembler,
   HandoffError,
   decodeScript,
-  parseChunk,
+  readScannedCode,
   type HandoffScript,
 } from '../lib/handoff';
 
@@ -65,15 +65,23 @@ export function Scan({ onImport, onPasteInstead, onBack }: Props) {
       const found = jsQR(image.data, width, height, { inversionAttempts: 'dontInvert' });
       if (!found) return;
 
-      const chunk = parseChunk(found.data);
-      if (!chunk) return;
+      // A single code carries the whole link; a split one carries a chunk.
+      const scanned = readScannedCode(found.data);
+      if (scanned === null) return;
 
-      const state = assembler.add(chunk);
-      setProgress({ captured: state.captured, total: state.total });
-      if (state.encoded === null) return;
+      let encoded: string;
+      if (scanned.kind === 'payload') {
+        encoded = scanned.encoded;
+        setProgress({ captured: 1, total: 1 });
+      } else {
+        const state = assembler.add(scanned.chunk);
+        setProgress({ captured: state.captured, total: state.total });
+        if (state.encoded === null) return;
+        encoded = state.encoded;
+      }
 
       try {
-        const script = decodeScript(state.encoded);
+        const script = decodeScript(encoded);
         stop();
         onImportRef.current(script);
       } catch (caught) {

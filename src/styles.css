@@ -228,6 +228,15 @@ body {
   color: #ffb3b3;
 }
 
+.banner-block {
+  max-width: 44em;
+  margin-inline: auto;
+  text-align: left;
+  background: rgba(255, 193, 94, 0.1);
+  border: 1px solid rgba(255, 193, 94, 0.3);
+  color: #ffd9a0;
+}
+
 ul.banner-warn {
   background: rgba(255, 193, 94, 0.1);
   border: 1px solid rgba(255, 193, 94, 0.3);
@@ -428,10 +437,8 @@ ul.banner-warn {
 
 .share-qr canvas {
   display: block;
-  width: 320px;
-  height: 320px;
-  max-width: 70vw;
-  max-height: 70vw;
+  max-width: min(70vw, 70vh);
+  max-height: min(70vw, 70vh);
 }
 
 .share-status {
