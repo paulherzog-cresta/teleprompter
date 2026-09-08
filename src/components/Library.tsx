@@ -5,14 +5,25 @@ type Props = {
   scripts: Script[];
   onOpen: (id: string) => void;
   onEdit: (id: string) => void;
+  onShare: (id: string) => void;
   onDelete: (id: string) => void;
   onNew: () => void;
+  onScan: () => void;
   onSettings: () => void;
 };
 
 const SWIPE_REVEAL = 50;
 
-export function Library({ scripts, onOpen, onEdit, onDelete, onNew, onSettings }: Props) {
+export function Library({
+  scripts,
+  onOpen,
+  onEdit,
+  onShare,
+  onDelete,
+  onNew,
+  onScan,
+  onSettings,
+}: Props) {
   const [swipedId, setSwipedId] = useState<string | null>(null);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
@@ -30,6 +41,10 @@ export function Library({ scripts, onOpen, onEdit, onDelete, onNew, onSettings }
       <header className="app-bar">
         <h1 className="app-bar-title">Scripts</h1>
         <div className="app-bar-actions">
+          {/* Scanning is the phone's way in; authoring is the laptop's. */}
+          <button className="button narrow-only" onClick={onScan}>
+            Scan
+          </button>
           <button className="button" onClick={onNew}>
             Add script
           </button>
@@ -94,7 +109,16 @@ export function Library({ scripts, onOpen, onEdit, onDelete, onNew, onSettings }
                       </span>
                     </div>
                     <button
-                      className="button button-quiet library-edit"
+                      className="button button-quiet wide-only"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onShare(script.id);
+                      }}
+                    >
+                      Send to phone
+                    </button>
+                    <button
+                      className="button button-quiet wide-only"
                       onClick={(e) => {
                         e.stopPropagation();
                         onEdit(script.id);

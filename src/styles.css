@@ -193,6 +193,27 @@ body {
   accent-color: var(--accent);
 }
 
+.drop {
+  border-radius: 10px;
+  transition: box-shadow 120ms ease-out;
+}
+
+.drop.is-dragging {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.drop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.drop-actions .hint {
+  margin: 0;
+}
+
 .banner {
   margin: 0 16px 8px;
   padding: 12px 14px;
@@ -373,14 +394,111 @@ ul.banner-warn {
   cursor: pointer;
 }
 
-.library-edit {
+/* The layout switches on width: authoring and sending belong on the laptop,
+   scanning belongs on the phone. */
+.wide-only {
   display: none;
 }
 
 @media (min-width: 720px) {
-  .library-edit {
+  .wide-only {
     display: inline-flex;
   }
+
+  .narrow-only {
+    display: none;
+  }
+}
+
+/* ---------- share and scan ---------- */
+
+.share,
+.scan {
+  padding: 20px 16px 32px;
+  text-align: center;
+}
+
+.share-qr {
+  display: inline-block;
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  line-height: 0;
+}
+
+.share-qr canvas {
+  display: block;
+  width: 320px;
+  height: 320px;
+  max-width: 70vw;
+  max-height: 70vw;
+}
+
+.share-status {
+  margin: 16px 0 0;
+  font-size: 15px;
+}
+
+.share-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.share-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  transition: background 150ms ease-out;
+}
+
+.share-dots span.is-active {
+  background: var(--accent);
+}
+
+.share-link {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px auto 0;
+  max-width: 620px;
+}
+
+.share-link .input {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+}
+
+.share .hint,
+.scan .hint {
+  max-width: 44em;
+  margin-inline: auto;
+}
+
+.scan-frame {
+  position: relative;
+  margin: 0 auto;
+  width: min(420px, 82vw);
+  aspect-ratio: 1;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #000000;
+  border: 1px solid var(--line-strong);
+}
+
+.scan-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scan-status {
+  margin: 16px 0 0;
+  font-size: 15px;
 }
 
 /* ---------- entries, shared by reader and previews ---------- */
@@ -418,7 +536,7 @@ ul.banner-warn {
 }
 
 .entry-other {
-  --type-opacity: 0.55;
+  --type-opacity: 0.62;
 }
 
 .entry-other .entry-text {
@@ -426,7 +544,7 @@ ul.banner-warn {
 }
 
 .entry-direction {
-  --type-opacity: 0.45;
+  --type-opacity: 0.5;
 }
 
 .entry-direction .entry-text {
@@ -495,44 +613,55 @@ ul.banner-warn {
 .reader-surface {
   position: absolute;
   inset: 0;
-  touch-action: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* Vertical panning stays with the browser so scrolling feels native; pinch
+     does not, so the overview gesture still reaches us. */
+  touch-action: pan-y;
+  /* Gentle, not mandatory: reading settles on the line without fighting a
+     deliberate scroll past it. */
+  scroll-snap-type: y proximity;
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
 }
 
 .reader-stack {
-  position: absolute;
-  /* The fixed reading position: the current entry's top lands here, every time. */
-  top: 38%;
-  left: 0;
-  right: 0;
+  position: relative;
   max-width: 900px;
   margin: 0 auto;
-  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  will-change: transform;
 }
 
-.at-far {
-  --distance-opacity: 0;
+.reader-anchor {
+  position: absolute;
+  left: 0;
+  z-index: 1;
+  width: 3px;
+  height: 30px;
+  margin-top: -7px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  opacity: 0.4;
+  pointer-events: none;
 }
 
-.at-prev {
-  --distance-opacity: 0.22;
+.reader-surface .entry {
+  scroll-snap-align: start;
 }
 
+/* Scrolling means reading ahead, so nothing goes fully dark the way it did when
+   only four entries were ever on screen. */
 .at-current {
   --distance-opacity: 1;
 }
 
-/* Kept under the 0.55 an other-role line gets, so the entry you are on always
-   reads as brighter than the one coming next. */
-.at-next {
-  --distance-opacity: 0.5;
+.at-near {
+  --distance-opacity: 0.78;
 }
 
-.at-next-2 {
-  --distance-opacity: 0.28;
+.at-far {
+  --distance-opacity: 0.6;
 }
 
 /* ---------- overview ---------- */

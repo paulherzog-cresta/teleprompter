@@ -6,121 +6,218 @@ import { Overview } from './Overview';
 
 type Props = {
   script: Script;
-  /** Relative so a burst of taps still lands one step each, ahead of any re-render. */
-  onMove: (delta: number) => void;
-  onJump: (index: number) => void;
+  onCursor: (cursor: number) => void;
   onPickRole: (role: string) => void;
   onExit: () => void;
 };
 
-const SWIPE_DISTANCE = 40;
+/** How far down the screen the reading line sits. */
+const ANCHOR_RATIO = 0.38;
 const TAP_SLOP = 12;
 const TAP_MAX_MS = 600;
+const SCROLL_SLOP = 2;
+/** A tap landing on a still-gliding list should stop it, not advance. */
+const MOMENTUM_GUARD_MS = 150;
 const PINCH_OPEN_RATIO = 1.25;
 /** A tap fires touchend and then a synthetic click; ignore the second one. */
 const SYNTHETIC_CLICK_MS = 700;
+/** Long enough that a resize mid-scroll does not yank the page back. */
+const REANCHOR_QUIET_MS = 400;
+const PERSIST_DEBOUNCE_MS = 400;
 
-type Gesture = { x: number; y: number; t: number; pinchBase: number | null; multi: boolean };
+type TouchState = {
+  y: number;
+  t: number;
+  scrollTop: number;
+  multi: boolean;
+  pinchBase: number | null;
+  momentumActive: boolean;
+};
 
 function touchDistance(touches: React.TouchList): number {
   const [a, b] = [touches[0], touches[1]];
   return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 }
 
-export function Reader({ script, onMove, onJump, onPickRole, onExit }: Props) {
-  const { entries, cursor, myRole } = script;
+export function Reader({ script, onCursor, onPickRole, onExit }: Props) {
+  const { entries, myRole } = script;
   const [overviewOpen, setOverviewOpen] = useState(false);
 
-  // Held for the whole time the reader is on screen, overview included.
+  // The scroll position is the source of truth while the reader is open. The
+  // cursor is derived from it and pushed back up for persistence, rather than
+  // driving the view.
+  const [current, setCurrent] = useState(() =>
+    Math.min(Math.max(0, script.cursor), Math.max(0, entries.length - 1)),
+  );
+  const [anchorTop, setAnchorTop] = useState(0);
+
   useWakeLock(true);
 
   const surfaceRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const cursorRef = useRef(cursor);
-  cursorRef.current = cursor;
+  const offsetsRef = useRef<number[]>([]);
+  const anchorRef = useRef(0);
+  const currentRef = useRef(current);
+  currentRef.current = current;
 
-  // Every entry is rendered, and the whole stack slides so the current one
-  // lands on the anchor line. Keeping the DOM stable is what lets the movement
-  // animate instead of jumping.
-  const [offset, setOffset] = useState(0);
+  const lastScrollAt = useRef(0);
+  const lastTouchEnd = useRef(0);
+  const touching = useRef(false);
+  const touchState = useRef<TouchState | null>(null);
+  const rafPending = useRef(false);
 
   const measure = useCallback(() => {
-    const el = itemRefs.current[cursorRef.current];
-    if (el) setOffset(el.offsetTop);
+    const surface = surfaceRef.current;
+    const stack = stackRef.current;
+    if (!surface || !stack) return;
+    const height = surface.clientHeight;
+    const anchor = Math.round(height * ANCHOR_RATIO);
+    anchorRef.current = anchor;
+
+    // Written straight to the DOM rather than through state, so the offsets
+    // read on the next line already include the padding. Going through a
+    // render would leave one frame where the two disagree, and a scroll in
+    // that frame resolves to the wrong entry.
+    stack.style.paddingTop = `${anchor}px`;
+    // Enough tail that the last entry can still be pulled up to the anchor.
+    stack.style.paddingBottom = `${Math.max(0, height - anchor)}px`;
+    surface.style.scrollPaddingTop = `${anchor}px`;
+
+    offsetsRef.current = itemRefs.current.map((el) => el?.offsetTop ?? 0);
+    setAnchorTop((previous) => (previous === anchor ? previous : anchor));
+  }, []);
+
+  /** The entry the reading line is currently sitting on. */
+  const deriveCurrent = useCallback((scrollTop: number) => {
+    const offsets = offsetsRef.current;
+    const anchorLine = scrollTop + anchorRef.current + 1;
+    let index = 0;
+    for (let i = 0; i < offsets.length; i++) {
+      if (offsets[i] <= anchorLine) index = i;
+      else break;
+    }
+    return index;
+  }, []);
+
+  const scrollToIndex = useCallback((index: number, smooth: boolean) => {
+    const surface = surfaceRef.current;
+    const offsets = offsetsRef.current;
+    if (!surface || offsets.length === 0) return;
+    const clamped = Math.min(offsets.length - 1, Math.max(0, index));
+    surface.scrollTo({
+      top: Math.max(0, offsets[clamped] - anchorRef.current),
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+    setCurrent(clamped);
   }, []);
 
   useLayoutEffect(() => {
     measure();
-  }, [measure, cursor, entries]);
+    scrollToIndex(script.cursor, false);
+    // Runs once: later layout changes are handled by the ResizeObserver below.
+
+  }, []);
 
   useEffect(() => {
+    const surface = surfaceRef.current;
     const stack = stackRef.current;
-    if (!stack || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => measure());
+    if (!surface || !stack || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      measure();
+      // Re-anchoring mid-scroll would fight the user — and on iOS the URL bar
+      // collapsing fires a resize in the middle of exactly that.
+      const quiet =
+        !touching.current && Date.now() - lastScrollAt.current > REANCHOR_QUIET_MS;
+      if (quiet) scrollToIndex(currentRef.current, false);
+    });
     observer.observe(stack);
+    observer.observe(surface);
     return () => observer.disconnect();
-  }, [measure]);
+  }, [measure, scrollToIndex]);
 
-  const move = useCallback((delta: number) => onMove(delta), [onMove]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => onCursor(current), PERSIST_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [current, onCursor]);
 
-  const gesture = useRef<Gesture | null>(null);
-  const lastTouchEnd = useRef(0);
+  const handleScroll = () => {
+    lastScrollAt.current = Date.now();
+    if (rafPending.current) return;
+    rafPending.current = true;
+    requestAnimationFrame(() => {
+      rafPending.current = false;
+      const surface = surfaceRef.current;
+      if (!surface) return;
+      const next = deriveCurrent(surface.scrollTop);
+      if (next !== currentRef.current) setCurrent(next);
+    });
+  };
 
   const onTouchStart = (e: React.TouchEvent) => {
+    touching.current = true;
+    const surface = surfaceRef.current;
     if (e.touches.length >= 2) {
-      gesture.current = { x: 0, y: 0, t: 0, pinchBase: touchDistance(e.touches), multi: true };
+      touchState.current = {
+        y: 0,
+        t: 0,
+        scrollTop: surface?.scrollTop ?? 0,
+        multi: true,
+        pinchBase: touchDistance(e.touches),
+        momentumActive: false,
+      };
       return;
     }
     const touch = e.touches[0];
-    gesture.current = {
-      x: touch.clientX,
+    touchState.current = {
       y: touch.clientY,
       t: Date.now(),
-      pinchBase: null,
+      scrollTop: surface?.scrollTop ?? 0,
       multi: false,
+      pinchBase: null,
+      momentumActive: Date.now() - lastScrollAt.current < MOMENTUM_GUARD_MS,
     };
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    const g = gesture.current;
-    if (!g || e.touches.length < 2) return;
-    g.multi = true;
+    const state = touchState.current;
+    if (!state || e.touches.length < 2) return;
+    state.multi = true;
     const distance = touchDistance(e.touches);
-    if (g.pinchBase === null) {
-      g.pinchBase = distance;
+    if (state.pinchBase === null) {
+      state.pinchBase = distance;
       return;
     }
-    if (distance / g.pinchBase > PINCH_OPEN_RATIO) {
+    if (distance / state.pinchBase > PINCH_OPEN_RATIO) {
       setOverviewOpen(true);
-      gesture.current = null;
+      touchState.current = null;
     }
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
     lastTouchEnd.current = Date.now();
-    if (e.touches.length > 0) return; // still mid-gesture with another finger down
-    const g = gesture.current;
-    gesture.current = null;
-    if (!g || g.multi) return;
+    if (e.touches.length > 0) return; // another finger is still down
+    touching.current = false;
 
+    const state = touchState.current;
+    touchState.current = null;
+    if (!state || state.multi || state.momentumActive) return;
+
+    const surface = surfaceRef.current;
     const touch = e.changedTouches[0];
-    if (!touch) return;
-    const dx = touch.clientX - g.x;
-    const dy = touch.clientY - g.y;
+    if (!surface || !touch) return;
 
-    if (Math.abs(dy) >= SWIPE_DISTANCE && Math.abs(dy) > Math.abs(dx)) {
-      move(dy < 0 ? 1 : -1);
-      return;
-    }
-    if (Math.abs(dx) < TAP_SLOP && Math.abs(dy) < TAP_SLOP && Date.now() - g.t < TAP_MAX_MS) {
-      move(1);
-    }
+    const fingerMoved = Math.abs(touch.clientY - state.y) > TAP_SLOP;
+    const listMoved = Math.abs(surface.scrollTop - state.scrollTop) > SCROLL_SLOP;
+    const tooSlow = Date.now() - state.t > TAP_MAX_MS;
+    if (fingerMoved || listMoved || tooSlow) return;
+
+    scrollToIndex(currentRef.current + 1, true);
   };
 
   const onClick = () => {
     if (Date.now() - lastTouchEnd.current < SYNTHETIC_CLICK_MS) return;
-    move(1);
+    scrollToIndex(currentRef.current + 1, true);
   };
 
   // Safari answers pinch with its own gesture events, which are more reliable
@@ -153,13 +250,13 @@ export function Reader({ script, onMove, onJump, onPickRole, onExit }: Props) {
         case 'ArrowDown':
         case 'PageDown':
           e.preventDefault();
-          move(1);
+          scrollToIndex(currentRef.current + 1, true);
           break;
         case 'ArrowLeft':
         case 'ArrowUp':
         case 'PageUp':
           e.preventDefault();
-          move(-1);
+          scrollToIndex(currentRef.current - 1, true);
           break;
         case 'Escape':
           onExit();
@@ -174,7 +271,7 @@ export function Reader({ script, onMove, onJump, onPickRole, onExit }: Props) {
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 
-  const progress = ((cursor + 1) / entries.length) * 100;
+  const progress = entries.length > 0 ? ((current + 1) / entries.length) * 100 : 0;
 
   return (
     <div className="reader">
@@ -196,34 +293,28 @@ export function Reader({ script, onMove, onJump, onPickRole, onExit }: Props) {
         </button>
       </header>
 
+      {/* Marks the reading line, so it stays findable now that the text moves
+          freely past it rather than being clamped to it. */}
+      <div className="reader-anchor" style={{ top: anchorTop }} />
+
       <div
         ref={surfaceRef}
         className="reader-surface"
+        onScroll={handleScroll}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onTouchCancel={() => {
-          gesture.current = null;
+          touching.current = false;
+          touchState.current = null;
         }}
         onClick={onClick}
       >
-        <div
-          ref={stackRef}
-          className="reader-stack"
-          style={{ transform: `translateY(${-offset}px)` }}
-        >
+        <div ref={stackRef} className="reader-stack">
           {entries.map((entry, index) => {
-            const distance = index - cursor;
+            const distance = Math.abs(index - current);
             const position =
-              distance === 0
-                ? 'at-current'
-                : distance === 1
-                  ? 'at-next'
-                  : distance === 2
-                    ? 'at-next-2'
-                    : distance === -1
-                      ? 'at-prev'
-                      : 'at-far';
+              distance === 0 ? 'at-current' : distance <= 2 ? 'at-near' : 'at-far';
             return (
               <div
                 key={index}
@@ -245,10 +336,10 @@ export function Reader({ script, onMove, onJump, onPickRole, onExit }: Props) {
       {overviewOpen && (
         <Overview
           entries={entries}
-          cursor={cursor}
+          cursor={current}
           myRole={myRole}
           onJump={(index) => {
-            onJump(index);
+            scrollToIndex(index, false);
             setOverviewOpen(false);
           }}
           onClose={() => setOverviewOpen(false)}

@@ -4,6 +4,14 @@ import { Library } from './components/Library';
 import { Editor, type EditorDraft } from './components/Editor';
 import { Reader } from './components/Reader';
 import { Settings } from './components/Settings';
+import { Share } from './components/Share';
+import { Scan } from './components/Scan';
+import {
+  HandoffError,
+  decodeScript,
+  readHandoffFromHash,
+  type HandoffScript,
+} from './lib/handoff';
 import {
   clearAllScripts,
   loadScripts,
@@ -17,6 +25,8 @@ type View =
   | { name: 'library' }
   | { name: 'editor'; id: string | null }
   | { name: 'reader'; id: string }
+  | { name: 'share'; id: string }
+  | { name: 'scan' }
   | { name: 'settings' };
 
 const NOTICE_MS = 4000;
@@ -29,6 +39,9 @@ export default function App() {
 
   const stackRef = useRef(stack);
   stackRef.current = stack;
+  const scriptsRef = useRef(scripts);
+  scriptsRef.current = scripts;
+
   const view = stack[stack.length - 1];
 
   // Each screen gets a history entry so the phone's back gesture leaves the
@@ -79,6 +92,72 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  const importScript = useCallback(
+    (incoming: HandoffScript) => {
+      const existing = scriptsRef.current.find((script) => script.id === incoming.id);
+
+      if (!existing) {
+        setScripts((current) => [
+          { ...incoming, cursor: 0, updatedAt: Date.now() },
+          ...current.filter((script) => script.id !== incoming.id),
+        ]);
+        setNotice(`Imported "${incoming.title}" — ${incoming.entries.length} entries.`);
+      } else {
+        const sameLength = existing.entries.length === incoming.entries.length;
+        setScripts((current) =>
+          current.map((script) =>
+            script.id === incoming.id
+              ? {
+                  ...script,
+                  title: incoming.title,
+                  roles: incoming.roles,
+                  // A payload with no role picked leaves this device's choice alone.
+                  myRole: incoming.myRole ?? script.myRole,
+                  entries: incoming.entries,
+                  cursor: sameLength
+                    ? Math.min(script.cursor, incoming.entries.length - 1)
+                    : 0,
+                  updatedAt: Date.now(),
+                }
+              : script,
+          ),
+        );
+        setNotice(
+          sameLength
+            ? `Updated "${incoming.title}". Reading position kept.`
+            : `Updated "${incoming.title}". The entry count changed, so reading position went back to the top.`,
+        );
+      }
+
+      push({ name: 'reader', id: incoming.id });
+    },
+    [push],
+  );
+
+  // A script can arrive as a link as well as a scan — same payload either way.
+  useEffect(() => {
+    const readHash = () => {
+      const encoded = readHandoffFromHash(window.location.hash);
+      if (encoded === null) return;
+      // Drop it before importing so a refresh does not import a second time.
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${window.location.search}`,
+      );
+      try {
+        importScript(decodeScript(encoded));
+      } catch (caught) {
+        setNotice(
+          caught instanceof HandoffError ? caught.message : 'That link could not be read.',
+        );
+      }
+    };
+    readHash();
+    window.addEventListener('hashchange', readHash);
+    return () => window.removeEventListener('hashchange', readHash);
+  }, [importScript]);
+
   const saveDraft = (draft: EditorDraft, id: string | null) => {
     if (id === null) {
       const script: Script = {
@@ -124,15 +203,22 @@ export default function App() {
       current.map((script) => (script.id === id ? { ...script, ...patch } : script)),
     );
 
-  const setCursor = (id: string, next: (cursor: number, total: number) => number) =>
-    setScripts((current) =>
-      current.map((script) => {
-        if (script.id !== id) return script;
-        const total = script.entries.length;
-        const cursor = Math.min(total - 1, Math.max(0, next(script.cursor, total)));
-        return cursor === script.cursor ? script : { ...script, cursor };
-      }),
-    );
+  // Stable identity: the reader debounces its writes, and a callback that
+  // changed every render would keep resetting that timer.
+  const readerId = view.name === 'reader' ? view.id : null;
+  const onReaderCursor = useCallback(
+    (cursor: number) => {
+      if (readerId === null) return;
+      setScripts((current) =>
+        current.map((script) => {
+          if (script.id !== readerId) return script;
+          const clamped = Math.min(script.entries.length - 1, Math.max(0, cursor));
+          return clamped === script.cursor ? script : { ...script, cursor: clamped };
+        }),
+      );
+    },
+    [readerId],
+  );
 
   const byId = (id: string) => scripts.find((script) => script.id === id) ?? null;
 
@@ -144,8 +230,7 @@ export default function App() {
       <Reader
         script={script}
         // cursor is per device, so moving it never bumps updatedAt.
-        onMove={(delta) => setCursor(script.id, (cursor) => cursor + delta)}
-        onJump={(index) => setCursor(script.id, () => index)}
+        onCursor={onReaderCursor}
         onPickRole={(myRole) => patchScript(script.id, { myRole, updatedAt: Date.now() })}
         onExit={back}
       />
@@ -156,6 +241,17 @@ export default function App() {
         script={view.id === null ? null : byId(view.id)}
         onSave={(draft) => saveDraft(draft, view.id)}
         onCancel={back}
+      />
+    );
+  } else if (view.name === 'share') {
+    const script = byId(view.id);
+    screen = script ? <Share script={script} onBack={back} /> : null;
+  } else if (view.name === 'scan') {
+    screen = (
+      <Scan
+        onImport={importScript}
+        onPasteInstead={() => push({ name: 'editor', id: null })}
+        onBack={back}
       />
     );
   } else if (view.name === 'settings') {
@@ -180,8 +276,10 @@ export default function App() {
         scripts={scripts}
         onOpen={(id) => push({ name: 'reader', id })}
         onEdit={(id) => push({ name: 'editor', id })}
+        onShare={(id) => push({ name: 'share', id })}
         onDelete={(id) => setScripts(scripts.filter((script) => script.id !== id))}
         onNew={() => push({ name: 'editor', id: null })}
+        onScan={() => push({ name: 'scan' })}
         onSettings={() => push({ name: 'settings' })}
       />
     );
