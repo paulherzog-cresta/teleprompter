@@ -236,6 +236,8 @@ export default function App() {
     screen = script ? (
       <Reader
         script={script}
+        mode={settings.mode}
+        onMode={(mode) => setSettings((current) => ({ ...current, mode }))}
         // cursor is per device, so moving it never bumps updatedAt.
         onCursor={onReaderCursor}
         onPickRole={(myRole) => patchScript(script.id, { myRole, updatedAt: Date.now() })}

@@ -12,6 +12,13 @@ export type Script = {
   updatedAt: number;
 };
 
+/**
+ * 'read' is the clean full-script view and the default. 'prompt' is the
+ * anchored teleprompter with a fixed reading line.
+ */
+export type ReadingMode = 'read' | 'prompt';
+
 export type Settings = {
   fontScale: number; // 0.7 to 1.6, default 1.0
+  mode: ReadingMode;
 };

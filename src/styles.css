@@ -41,7 +41,9 @@
   --gap: 18px;
 
   --font-scale: 1;
-  --reader-base: calc(32px * var(--font-scale));
+  /* Rebased in v2: 100% here is what used to read as 150% on the slider.
+     loadSettings divides an older stored scale through to match. */
+  --reader-base: calc(48px * var(--font-scale));
 
   color-scheme: dark;
 }
@@ -208,6 +210,48 @@ body {
 
 .icon-button:hover {
   background: var(--surface-raised);
+}
+
+/* ---------- radix toggle group: the reading mode switch ---------- */
+
+.segmented {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  gap: 3px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+}
+
+.segmented-item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.segmented-item:hover {
+  color: var(--fg);
+}
+
+.segmented-item[data-state='on'] {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.segmented-item:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
 }
 
 :where(.button, .icon-button, .role-option, .overview-item, .input, .textarea):focus-visible {
@@ -415,6 +459,11 @@ ul.banner-warn {
 
 .preview .entry:last-child {
   margin-bottom: 0;
+}
+
+/* Shows the slider's effect at the size read mode actually uses. */
+.preview.preview-live {
+  --reader-base: calc(24px * var(--font-scale));
 }
 
 .empty {
@@ -959,103 +1008,46 @@ ul.banner-warn {
   --distance-opacity: 0.6;
 }
 
-/* ---------- overview ---------- */
+/* ---------- read mode: the clean full-script view ---------- */
 
-.overview {
-  position: fixed;
+.readview {
+  position: absolute;
   inset: 0;
-  z-index: 41;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-}
-
-.overview-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: calc(env(safe-area-inset-top) + 10px) 12px 10px 16px;
-  border-bottom: 1px solid var(--line);
-  background: var(--bg);
-}
-
-.overview-title {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.overview-list {
-  flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  list-style: none;
-  margin: 0;
-  padding: 8px 0 calc(env(safe-area-inset-bottom) + 32px);
+  /* Vertical panning stays native; pinch is ours, for the mode shortcut. */
+  touch-action: pan-y;
+  scrollbar-width: none;
+  /* Two thirds the prompt size: comfortable to read, not to glance at. */
+  --reader-base: calc(24px * var(--font-scale));
 }
 
-.overview-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  padding: 10px 16px;
-  cursor: pointer;
+.readview::-webkit-scrollbar {
+  display: none;
 }
 
-.overview-item:hover {
-  background: var(--surface);
+.readview-stack {
+  max-width: 780px;
+  margin: 0 auto;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 64px);
 }
 
-.overview-item.entry-mine {
-  opacity: 1;
+/* Nothing is dimmed by distance here — the whole script is meant to be read. */
+.readview .entry {
+  margin-bottom: calc(var(--reader-base) * 0.9);
 }
 
-.overview-item.entry-other {
-  opacity: 0.72;
+.readview .entry-other .entry-text {
+  font-size: calc(var(--reader-base) * 0.95);
 }
 
-.overview-item.entry-direction {
-  opacity: 0.95;
+.readview .entry-direction .entry-text {
+  font-size: calc(var(--reader-base) * 0.82);
 }
 
-.overview-item.entry-direction .overview-text {
-  display: block;
-  border-left: 3px solid var(--direction-line);
-  border-radius: 0 6px 6px 0;
-  background: var(--direction-bg);
-  color: var(--direction-fg);
-  font-style: italic;
-  padding: 7px 10px;
-}
-
-.overview-item.is-current {
-  background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
-.overview-role {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  margin-bottom: 3px;
-}
-
-.overview-item.entry-mine .overview-role {
-  color: var(--accent-text);
-}
-
-.overview-text {
-  display: block;
-  font-size: calc(16px * var(--font-scale));
-  line-height: 1.35;
-  white-space: pre-wrap;
+.readview .entry-text {
+  line-height: 1.4;
 }
 
 @media (prefers-reduced-motion: reduce) {

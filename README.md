@@ -98,24 +98,33 @@ columns, no data rows.
 
 ## Using the reader
 
+There are two modes, switched with the **Read / Prompt** control in the top bar. Your choice is
+remembered per device, and switching keeps your place in the script.
+
+**Read** is the default: the whole script at a comfortable size, scrolled normally, nothing dimmed.
+This is the one to use when you want to actually read the thing.
+
+**Prompt** is the teleprompter: a fixed reading line about 38% down the screen, marked by a tick on
+the left edge, with everything else dimmed by distance from it. Scrolling settles gently onto the
+line rather than snapping hard.
+
 | Gesture | Effect |
 | --- | --- |
-| Scroll | Read freely. Whichever entry sits on the reading line becomes the current one |
-| Tap anywhere | Pull the next entry up to the reading line |
-| Pinch out | Open the full-script overview |
-| ☰ (top right) | Same overview, for when pinch does not take |
+| Scroll | Read freely. In Prompt, whichever entry sits on the line becomes the current one |
+| Tap anywhere *(Prompt)* | Pull the next entry up to the reading line |
+| Pinch in / out | Shortcut between the two modes, if the toggle is out of reach |
 
-The reading line is a fixed point about 38% down the screen, marked by a small tick on the left
-edge. Scrolling settles gently onto it rather than snapping hard, so you can read ahead without
-losing your place. Tapping is still there for when you want to step a line at a time without
-looking.
+On a keyboard: space or arrows to move through Prompt, `m` to switch modes, `esc` to leave the
+reader.
 
-In the overview, tap any entry to jump there. On a keyboard: space or arrows to move, `o` for the
-overview, `esc` to leave the reader.
+Every line is labelled with its role, with your own name in the accent colour. Your lines are the
+brightest and largest; other roles are a step down. Directions are not dialogue at all, so they
+render as a boxed amber note rather than something that could be mistaken for a spoken line.
 
-Your lines are full brightness and largest. Other roles are dimmer and a step smaller with a role
-label. Directions are dimmer still, italic, and smaller again. Text size is adjustable in Settings
-and is remembered per device.
+Text size is adjustable in Settings and remembered per device. The scale was rebased once: what
+read as 150% before now reads as 100%, and `loadSettings` divides an older stored value through so
+the size on an existing device does not change. Prompt mode at 100% is therefore large — 70% is
+roughly where its old default sat.
 
 The reader holds a screen wake lock while it is open and re-acquires it whenever the app comes back
 to the foreground, so the phone does not sleep mid-sentence.
@@ -142,8 +151,9 @@ src/
   components/
     Library.tsx           saved scripts, progress, swipe or right-click to delete
     Editor.tsx            paste, live parse preview, role picker
-    Reader.tsx            fixed reading position, gestures, wake lock
-    Overview.tsx          full script, tap to jump
+    Reader.tsx            shell: top bar, mode toggle, wake lock, role prompt
+    ReadView.tsx          clean full-script reading, the default mode
+    PromptView.tsx        anchored teleprompter, fixed reading line
     Settings.tsx          text size, wake lock status, clear all
   lib/
     delimited.ts          delimiter detection and RFC 4180 parsing

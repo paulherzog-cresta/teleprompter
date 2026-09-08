@@ -6,7 +6,15 @@ const SETTINGS_KEY = `${NS}.settings`;
 
 export const FONT_SCALE_MIN = 0.7;
 export const FONT_SCALE_MAX = 1.6;
-export const DEFAULT_SETTINGS: Settings = { fontScale: 1 };
+export const DEFAULT_SETTINGS: Settings = { fontScale: 1, mode: 'read' };
+
+/**
+ * Bumped when the meaning of a stored setting changes rather than its shape.
+ * v2 rebased the type sizes so the old 150% is the new 100%; a scale saved
+ * under v1 has to be divided through or the text triples in size.
+ */
+const SETTINGS_VERSION = 2;
+const V2_SCALE_REBASE = 1.5;
 
 export const clampFontScale = (n: number) =>
   Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, Number.isFinite(n) ? n : 1));
@@ -71,11 +79,18 @@ export function loadSettings(): Settings {
   const value = read(SETTINGS_KEY);
   if (typeof value !== 'object' || value === null) return { ...DEFAULT_SETTINGS };
   const s = value as Record<string, unknown>;
-  return { fontScale: clampFontScale(typeof s.fontScale === 'number' ? s.fontScale : 1) };
+
+  const raw = typeof s.fontScale === 'number' ? s.fontScale : 1;
+  const version = typeof s.v === 'number' ? s.v : 1;
+  // A pre-v2 scale was measured against the smaller type, so carry the user's
+  // chosen size across rather than resetting it.
+  const fontScale = clampFontScale(version < 2 ? raw / V2_SCALE_REBASE : raw);
+
+  return { fontScale, mode: s.mode === 'prompt' ? 'prompt' : 'read' };
 }
 
 export function saveSettings(settings: Settings): boolean {
-  return write(SETTINGS_KEY, settings);
+  return write(SETTINGS_KEY, { v: SETTINGS_VERSION, ...settings });
 }
 
 export function clearAllScripts(): void {

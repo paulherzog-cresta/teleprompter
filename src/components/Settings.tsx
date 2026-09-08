@@ -42,7 +42,7 @@ export function Settings({ settings, scriptCount, onChange, onClearAll, onBack }
             <Slider.Thumb className="slider-thumb" aria-label="Text size" />
           </Slider.Root>
 
-          <div className="preview" style={{ marginTop: 'var(--gap)' }}>
+          <div className="preview preview-live" style={{ marginTop: 'var(--gap)' }}>
             <div className="entry entry-mine">
               <div className="entry-body">
                 <span className="entry-role">You</span>
