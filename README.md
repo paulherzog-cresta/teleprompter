@@ -30,9 +30,25 @@ several that cycle on a loop. A split code is **not** a link, so the camera app 
 the screen says so, and you use **Scan** inside the teleprompter instead, which reassembles the
 pieces as they come round.
 
-**Copy link** does the same job with no camera at all. The whole script rides in the part of the
-URL after the `#`, which browsers never send to a server — so pasting that link into a Slack DM is
-how you hand a script to a teammate, and the reliable escape hatch for a very long script.
+**Copy link** does the same job with no camera at all, and is the reliable escape hatch for a very
+long script.
+
+## Running a two-hander
+
+An Agent Assist rehearsal needs two people: you read one column, a colleague reads the other. The
+share screen has a **This link is for** picker, and the chosen role is baked into the link.
+
+1. **Share** the script, pick **Customer**, and send that link over Slack.
+2. Leave your own copy on **Agent**.
+
+Your colleague opens the link and lands in the script with the Customer lines bright and yours
+dimmed — the exact mirror of your screen. They need nothing installed and no account; the link is
+the whole handoff. **Let them pick** is the third option, for when you do not know who is reading.
+
+Reading position and text sizes never travel, so the two of you scroll independently.
+
+Worth knowing: anyone holding the link holds the script. There is nothing to revoke, because there
+is no server to revoke it on.
 
 Nothing about your reading position or text size travels. Those stay on the device they were set
 on.

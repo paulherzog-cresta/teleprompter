@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
+import * as RadioGroup from '@radix-ui/react-radio-group';
 import type { Script } from '../types';
 import { chunkPayload, encodeScript, handoffUrl, newSessionId } from '../lib/handoff';
 
@@ -10,6 +11,8 @@ type Props = {
 
 /** Slow enough to catch, fast enough that three codes take under five seconds. */
 const CYCLE_MS = 1500;
+/** A role name can never be this, so it is safe as the "let them pick" value. */
+const NO_ROLE = ' none';
 
 type Plan =
   /** The whole link in one code, which the phone's own camera app can open. */
@@ -17,14 +20,21 @@ type Plan =
   /** Too long for one code, so it goes as chunks the in-app scanner reassembles. */
   | { mode: 'chunks'; codes: string[]; version: null };
 
+const canNativeShare = () =>
+  typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
 export function Share({ script, onBack }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [index, setIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Whose part this particular link is for. Defaults to your own, which is the
+  // send-it-to-my-own-phone case; switch it to hand someone else their side.
+  const [shareRole, setShareRole] = useState<string | null>(script.myRole);
+
   const { encoded, url, plan } = useMemo(() => {
-    const value = encodeScript(script);
+    const value = encodeScript({ ...script, myRole: shareRole });
     const link = handoffUrl(value);
 
     let next: Plan;
@@ -36,7 +46,7 @@ export function Share({ script, onBack }: Props) {
       next = { mode: 'chunks', codes: chunkPayload(value, newSessionId()), version: null };
     }
     return { encoded: value, url: link, plan: next };
-  }, [script]);
+  }, [script, shareRole]);
 
   // A denser code needs more pixels to stay readable from a foot away.
   const pixels = Math.min(460, Math.max(320, (plan.version ?? 26) * 13));
@@ -74,7 +84,20 @@ export function Share({ script, onBack }: Props) {
     }
   };
 
+  const shareNative = async () => {
+    try {
+      await navigator.share({
+        title: script.title,
+        text: shareRole === null ? script.title : `${script.title} — you read ${shareRole}`,
+        url,
+      });
+    } catch {
+      /* dismissing the share sheet is not an error */
+    }
+  };
+
   const sizeKb = (encoded.length / 1024).toFixed(1);
+  const forWhom = shareRole === null ? 'no role picked' : shareRole;
 
   return (
     <div className="screen">
@@ -82,10 +105,34 @@ export function Share({ script, onBack }: Props) {
         <button className="icon-button" onClick={onBack} aria-label="Back">
           ‹
         </button>
-        <h1 className="app-bar-title">Send to phone</h1>
+        <h1 className="app-bar-title">Share script</h1>
       </header>
 
       <div className="screen-body">
+        <div className="field">
+          <span className="field-label">This link is for</span>
+          <RadioGroup.Root
+            className="role-options"
+            value={shareRole ?? NO_ROLE}
+            onValueChange={(value) => setShareRole(value === NO_ROLE ? null : value)}
+          >
+            {script.roles.map((role) => (
+              <RadioGroup.Item key={role} className="role-option" value={role}>
+                {role}
+              </RadioGroup.Item>
+            ))}
+            <RadioGroup.Item className="role-option" value={NO_ROLE}>
+              Let them pick
+            </RadioGroup.Item>
+          </RadioGroup.Root>
+          <p className="hint">
+            Whoever opens this link gets the whole script with{' '}
+            {shareRole === null ? 'a prompt to choose their part' : <strong>{shareRole}</strong>}{' '}
+            {shareRole === null ? '' : 'highlighted as theirs'}. To run a two-hander, keep your own
+            link and send your colleague the other one.
+          </p>
+        </div>
+
         <div className="share stack">
           <div className="share-qr">
             <canvas ref={canvasRef} style={{ width: pixels, height: pixels }} />
@@ -94,10 +141,10 @@ export function Share({ script, onBack }: Props) {
           {plan.mode === 'link' ? (
             <>
               <p className="share-status">
-                Point your phone's camera at this. Tap the link it offers.
+                Point a phone camera at this. Tap the link it offers.
               </p>
               <p className="hint">
-                Your normal camera app works — there is nothing to open in the teleprompter first.
+                A normal camera app works — there is nothing to open in the teleprompter first.
               </p>
             </>
           ) : (
@@ -111,15 +158,15 @@ export function Share({ script, onBack }: Props) {
                 ))}
               </div>
               <div className="banner banner-warn banner-block">
-                A split code is not a link, so your camera app cannot read it. On the phone, open
-                the teleprompter, tap <strong>Scan</strong>, and hold it here — or just copy the
-                link below and send it to yourself.
+                A split code is not a link, so a camera app cannot read it. On the phone, open the
+                teleprompter, tap <strong>Scan</strong>, and hold it here — or just copy the link
+                below and send that instead.
               </div>
             </>
           )}
 
           <p className="hint">
-            {script.title} · {script.entries.length} entries · {sizeKb} KB ·{' '}
+            {script.title} · {script.entries.length} entries · {forWhom} · {sizeKb} KB ·{' '}
             {plan.mode === 'link' ? 'one code' : `${plan.codes.length} codes`}
           </p>
 
@@ -129,12 +176,19 @@ export function Share({ script, onBack }: Props) {
             <button className="button button-primary" onClick={copy}>
               {copied ? 'Copied' : 'Copy link'}
             </button>
+            {canNativeShare() && (
+              <button className="button" onClick={shareNative}>
+                Share…
+              </button>
+            )}
             <input className="input" readOnly value={url} onFocus={(e) => e.target.select()} />
           </div>
 
           <p className="hint">
             The whole script rides in the part of the link after the <code>#</code>, which browsers
-            never send to a server. Sending it over Slack is how you get a script to someone else.
+            never send to a server. Anyone with the link has the script — there is no account to
+            add them to, and nothing to revoke. Your reading position and text sizes stay on your
+            own device.
           </p>
         </div>
       </div>

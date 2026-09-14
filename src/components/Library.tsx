@@ -121,7 +121,7 @@ export function Library({
                           onShare(script.id);
                         }}
                       >
-                        Send to phone
+                        Share
                       </button>
                       <button
                         className="button button-quiet"

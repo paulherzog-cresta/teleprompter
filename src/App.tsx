@@ -105,7 +105,12 @@ export default function App() {
           { ...incoming, cursor: 0, updatedAt: Date.now() },
           ...current.filter((script) => script.id !== incoming.id),
         ]);
-        setNotice(`Imported "${incoming.title}" — ${incoming.entries.length} entries.`);
+        // Say which part they were handed; a shared link picks it for them.
+        setNotice(
+          incoming.myRole === null
+            ? `Imported "${incoming.title}" — ${incoming.entries.length} entries.`
+            : `Imported "${incoming.title}" — you're reading ${incoming.myRole}.`,
+        );
       } else {
         const sameLength = existing.entries.length === incoming.entries.length;
         setScripts((current) =>
