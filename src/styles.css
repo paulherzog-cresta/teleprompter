@@ -725,8 +725,12 @@ ul.banner-warn {
 
 .share-qr canvas {
   display: block;
-  max-width: min(70vw, 60vh);
-  max-height: min(70vw, 60vh);
+  /* Generous, so the canvas almost never has to be scaled down at all. */
+  max-width: min(92vw, 78vh);
+  max-height: min(92vw, 78vh);
+  /* If the viewport forces a downscale, keep the module edges hard rather than
+     letting the browser blur them into something a camera cannot read. */
+  image-rendering: pixelated;
 }
 
 .share-status,

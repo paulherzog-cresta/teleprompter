@@ -11,6 +11,19 @@ type Props = {
 
 /** Slow enough to catch, fast enough that three codes take under five seconds. */
 const CYCLE_MS = 1500;
+/**
+ * The quiet zone the QR spec requires. Below this a decoder cannot reliably
+ * find the corner patterns — two modules looked fine on a short script and
+ * stopped resolving once the code grew denser.
+ */
+const QUIET_ZONE = 4;
+/**
+ * Roughly how big we want the code on screen. The real size rounds to a whole
+ * number of pixels per module, because fractional modules blur the grid — so
+ * this is a target, not a width. Set high enough that even the densest code
+ * still gets three pixels a module rather than the bare minimum of two.
+ */
+const TARGET_PX = 470;
 /** A role name can never be this, so it is safe as the "let them pick" value. */
 const NO_ROLE = ' none';
 
@@ -48,9 +61,6 @@ export function Share({ script, onBack }: Props) {
     return { encoded: value, url: link, plan: next };
   }, [script, shareRole]);
 
-  // A denser code needs more pixels to stay readable from a foot away.
-  const pixels = Math.min(460, Math.max(320, (plan.version ?? 26) * 13));
-
   useEffect(() => setIndex(0), [plan]);
 
   useEffect(() => {
@@ -66,13 +76,20 @@ export function Share({ script, onBack }: Props) {
     const canvas = canvasRef.current;
     const data = plan.codes[index];
     if (!canvas || data === undefined) return;
+
+    // Size by a whole number of pixels per module rather than asking for a
+    // pixel width: an exact grid is what a camera can actually resolve.
+    const version = QRCode.create(data, { errorCorrectionLevel: 'L' }).version;
+    const across = version * 4 + 17 + QUIET_ZONE * 2;
+    const scale = Math.min(8, Math.max(2, Math.round(TARGET_PX / across)));
+
     QRCode.toCanvas(canvas, data, {
       errorCorrectionLevel: 'L',
-      margin: 2,
-      width: pixels,
+      margin: QUIET_ZONE,
+      scale,
       color: { dark: '#000000', light: '#ffffff' },
     }).catch(() => setError('This script is too long to put in a QR code. Use the link instead.'));
-  }, [plan, index, pixels]);
+  }, [plan, index]);
 
   const copy = async () => {
     try {
@@ -135,7 +152,7 @@ export function Share({ script, onBack }: Props) {
 
         <div className="share stack">
           <div className="share-qr">
-            <canvas ref={canvasRef} style={{ width: pixels, height: pixels }} />
+            <canvas ref={canvasRef} />
           </div>
 
           {plan.mode === 'link' ? (
